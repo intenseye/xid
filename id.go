@@ -43,14 +43,15 @@ package xid
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"crypto/rand"
+	"crypto/sha256"
 	"database/sql/driver"
 	"encoding/binary"
 	"fmt"
 	"hash/crc32"
 	"io/ioutil"
 	"os"
+	"runtime"
 	"sort"
 	"sync/atomic"
 	"time"
@@ -94,13 +95,15 @@ func init() {
 	for i := 0; i < len(encoding); i++ {
 		dec[encoding[i]] = byte(i)
 	}
-
-	// If /proc/self/cpuset exists and is not /, we can assume that we are in a
-	// form of container and use the content of cpuset xor-ed with the PID in
-	// order get a reasonable machine global unique PID.
-	b, err := ioutil.ReadFile("/proc/self/cpuset")
-	if err == nil && len(b) > 1 {
-		pid ^= int(crc32.ChecksumIEEE(b))
+	os := runtime.GOOS
+	if os != "windows" {
+		// If /proc/self/cpuset exists and is not /, we can assume that we are in a
+		// form of container and use the content of cpuset xor-ed with the PID in
+		// order get a reasonable machine global unique PID.
+		b, err := ioutil.ReadFile("/proc/self/cpuset")
+		if err == nil && len(b) > 1 {
+			pid ^= int(crc32.ChecksumIEEE(b))
+		}
 	}
 }
 
